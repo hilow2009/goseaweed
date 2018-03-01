@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"net/http"
 	"strconv"
 	"time"
 )
@@ -95,4 +96,19 @@ func (sw *Seaweed) DeleteFile(fileId, collection string) error {
 		return fmt.Errorf("Failed to delete %s:%v", fileUrl, err)
 	}
 	return nil
+}
+
+// 调用方需要负责执行 resp.Body.Close()
+func (sw *Seaweed) RawDownloadFile(fileId, collection string, args url.Values, headers http.Header) (*http.Response, error) {
+
+	fileUrl, err := sw.LookupFileIdReadOnly(fileId, collection, args)
+	if nil != err {
+		return nil, fmt.Errorf("Failed to lookup %s:%v", fileId, err)
+	}
+	resp, err := sw.HC.RawGet(fileUrl, headers)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to RawGet %s:%v", fileUrl, err)
+	}
+
+	return resp, nil
 }

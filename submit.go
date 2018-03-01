@@ -9,6 +9,8 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"mime/multipart"
+	"time"
 )
 
 type FilePart struct {
@@ -162,6 +164,18 @@ func (sw *Seaweed) uploadManifest(fp *FilePart, manifest *ChunkManifest) error {
 	return e
 }
 
+func (this *FilePart) UpdateFileName(fileName string) {
+	ext := strings.ToLower(path.Ext(fileName))
+	this.IsGzipped = ext == ".gz"
+	if this.IsGzipped {
+		this.FileName = fileName[0 : len(fileName)-3]
+	}
+	this.FileName = fileName
+	if ext != "" {
+		this.MimeType = mime.TypeByExtension(ext)
+	}
+}
+
 func NewFilePart(fullPathFilename string) (ret FilePart, err error) {
 	fh, openErr := os.Open(fullPathFilename)
 	if openErr != nil {
@@ -175,17 +189,21 @@ func NewFilePart(fullPathFilename string) (ret FilePart, err error) {
 		ret.ModTime = fi.ModTime().UTC().Unix()
 		ret.FileSize = fi.Size()
 	}
-	ext := strings.ToLower(path.Ext(fullPathFilename))
-	ret.IsGzipped = ext == ".gz"
-	if ret.IsGzipped {
-		ret.FileName = fullPathFilename[0 : len(fullPathFilename)-3]
-	}
-	ret.FileName = fullPathFilename
-	if ext != "" {
-		ret.MimeType = mime.TypeByExtension(ext)
-	}
-
+	ret.UpdateFileName(fullPathFilename)
 	return ret, nil
+}
+
+// 返回的 multipart.File 必须由调用者负责关闭
+func NewFilePartFromMultiPart(fileReader io.Reader, fileHeader *multipart.FileHeader) (ret FilePart) {
+	ret.Reader = fileReader
+	ret.ModTime = time.Now().UTC().Unix()
+
+	// 需要升级 golang 为 1.9 ，以使用 fileHeader.Size 字段
+	ret.FileSize = fileHeader.Size
+
+	ret.UpdateFileName(fileHeader.Filename)
+
+	return ret
 }
 
 func NewFileParts(fullPathFilenames []string) (ret []FilePart, err error) {

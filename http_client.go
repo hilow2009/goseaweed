@@ -153,6 +153,32 @@ func (hc *HttpClient) Get(host, path string, values url.Values) ([]byte, error) 
 	return b, nil
 }
 
+// 发送 GET 请求，返回原始 http.Response 指针
+// 调用方需要负责执行 resp.Body.Close()
+// 本函数可用于中转 http.Request
+func (hc *HttpClient) RawGet(url string, headers http.Header) (*http.Response, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if nil != err {
+		return nil, err
+	}
+
+	// clone header
+	h2 := make(http.Header, len(headers))
+	for k, vv := range headers {
+		vv2 := make([]string, len(vv))
+		copy(vv2, vv)
+		h2[k] = vv2
+	}
+	req.Header = h2
+
+	resp, err := hc.Client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
 func (hc *HttpClient) Delete(url string) error {
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
@@ -180,25 +206,25 @@ func (hc *HttpClient) Delete(url string) error {
 	return errors.New(string(body))
 }
 
-func (hc *HttpClient) DownloadUrl(fileUrl string) (filename string, rc io.ReadCloser, e error) {
-	response, err := hc.Client.Get(fileUrl)
-	if err != nil {
-		return "", nil, err
-	}
-	if response.StatusCode != http.StatusOK {
-		response.Body.Close()
-		return "", nil, fmt.Errorf("%s: %s", fileUrl, response.Status)
-	}
-	contentDisposition := response.Header["Content-Disposition"]
-	if len(contentDisposition) > 0 {
-		if strings.HasPrefix(contentDisposition[0], "filename=") {
-			filename = contentDisposition[0][len("filename="):]
-			filename = strings.Trim(filename, "\"")
-		}
-	}
-	rc = response.Body
-	return
-}
+// func (hc *HttpClient) DownloadUrl(fileUrl string) (filename string, rc io.ReadCloser, e error) {
+// 	response, err := hc.Client.Get(fileUrl)
+// 	if err != nil {
+// 		return "", nil, err
+// 	}
+// 	if response.StatusCode != http.StatusOK {
+// 		response.Body.Close()
+// 		return "", nil, fmt.Errorf("%s: %s", fileUrl, response.Status)
+// 	}
+// 	contentDisposition := response.Header["Content-Disposition"]
+// 	if len(contentDisposition) > 0 {
+// 		if strings.HasPrefix(contentDisposition[0], "filename=") {
+// 			filename = contentDisposition[0][len("filename="):]
+// 			filename = strings.Trim(filename, "\"")
+// 		}
+// 	}
+// 	rc = response.Body
+// 	return
+// }
 
 func (hc *HttpClient) Do(req *http.Request) (resp *http.Response, err error) {
 	return hc.Client.Do(req)

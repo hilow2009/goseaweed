@@ -110,6 +110,14 @@ func (sw *Seaweed) LookupFileId(fileId, collection string, readonly bool) (fullU
 	return MkUrl(u, fileId, nil), nil
 }
 
+func (sw *Seaweed) LookupFileIdReadOnly(fileId, collection string, args url.Values) (fullUrl string, err error) {
+	u, e := sw.LookupServerByFid(fileId, collection, true)
+	if e != nil {
+		return "", e
+	}
+	return MkUrl(u, fileId, args), nil
+}
+
 // LookupVolumeIds find volume locations by cache and actual lookup
 func (sw *Seaweed) LookupVolumeIds(vids []string) (map[string]LookupResult, error) {
 	ret := make(map[string]LookupResult)
